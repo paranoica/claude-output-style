@@ -1,0 +1,55 @@
+[
+  {
+    "id": "01-fact",
+    "type": "короткий факт",
+    "turns": ["какой порт по умолчанию у постгреса"]
+  },
+  {
+    "id": "02-howto",
+    "type": "как сделать X в коде",
+    "turns": ["как в python прочитать jsonl построчно и пропустить битые строки, но залогировать номер строки"]
+  },
+  {
+    "id": "03-concept",
+    "type": "объяснение концепции",
+    "turns": ["Объясни, что такое идемпотентность в HTTP API и зачем нужен Idempotency-Key."]
+  },
+  {
+    "id": "04-choice",
+    "type": "выбор между вариантами",
+    "turns": ["что взять для фоновых задач в небольшом fastapi проекте: celery, rq или arq? сервер один, задач ~1000 в день, редис уже есть"]
+  },
+  {
+    "id": "05-debug",
+    "type": "дебаг по логу",
+    "turns": ["чё за хрень, вчера работало\n\nTraceback (most recent call last):\n  File \"/app/worker.py\", line 51, in <module>\n    asyncio.run(main())\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 194, in run\n    return runner.run(main)\n  File \"/app/worker.py\", line 44, in main\n    await asyncio.gather(*(process(job) for job in jobs))\n  File \"/app/worker.py\", line 30, in process\n    async with pool.acquire() as conn:\n  File \"/app/.venv/lib/python3.12/site-packages/asyncpg/pool.py\", line 1024, in __aenter__\n    self.connection = await self.pool._acquire(self.timeout)\nRuntimeError: Task <Task pending name='Task-3' coro=<process() running at /app/worker.py:30>> got Future <Future pending> attached to a different loop\n\nпул создаётся на уровне модуля: pool = asyncio.get_event_loop().run_until_complete(asyncpg.create_pool(DSN))"]
+  },
+  {
+    "id": "06-personal",
+    "type": "личный или эмоциональный вопрос",
+    "turns": ["заебался уже, третью неделю не могу закрыть проект, клиент каждый день меняет требования. как с этим вообще жить"]
+  },
+  {
+    "id": "07-deep",
+    "type": "явная просьба о подробном разборе",
+    "turns": ["Разбери подробно, как в PostgreSQL работает MVCC: снапшоты, xmin/xmax, видимость строк, зачем нужен VACUUM и что такое wraparound. Мне нужно глубоко, со всеми нюансами."]
+  },
+  {
+    "id": "08-english",
+    "type": "вопрос на английском",
+    "turns": ["What's the practical difference between git rebase and git merge, and when should I pick each?"]
+  },
+  {
+    "id": "09-multistep",
+    "type": "многошаговая задача",
+    "turns": ["надо на свежей ubuntu 24.04 поднять nginx с https через letsencrypt для домена example.com и проксировать на приложение на 127.0.0.1:8000. распиши по шагам"]
+  },
+  {
+    "id": "10-followup",
+    "type": "уточняющий вопрос по прошлому ответу",
+    "turns": [
+      "как в bash проверить, что файл существует",
+      "а если это симлинк, который указывает на удалённый файл? что вернёт твоя проверка"
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "language": "Russian",
+    "effortLevel": "high"
+  },
+  "variants": {
+    "baseline": {},
+    "current": {
+      "claude_md": "~/.claude/CLAUDE.md",
+      "style": "~/.claude/output-styles/humanized.md"
+    },
+    "claudemd": {
+      "claude_md": "CLAUDE.md"
+    },
+    "style": {
+      "style": "output-styles/plain.md"
+    },
+    "both": {
+      "claude_md": "CLAUDE.md",
+      "style": "output-styles/plain.md"
+    }
+  }
+}
