@@ -30,7 +30,7 @@
 
 ### claude.ai
 
-Скопировать текст `claude-ai-preferences.md` в Settings → Profile → «What personal preferences should Claude consider in responses?». Это 1034 символа. Официального лимита поля Anthropic не публикует. Styles на claude.ai сейчас переезжают в skills, поэтому основной путь это preferences.
+Скопировать текст `claude-ai-preferences.md` в Settings → Your Claude → Instructions. Это 1034 символа. Официального лимита поля Anthropic не публикует. Styles на claude.ai сейчас переезжают в skills, поэтому основной путь это preferences.
 
 ### bedrock
 
