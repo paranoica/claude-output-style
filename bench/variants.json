@@ -18,6 +18,30 @@
     "both": {
       "claude_md": "CLAUDE.md",
       "style": "output-styles/plain.md"
+    },
+    "installed": {
+      "claude_md": [
+        "~/.claude/CLAUDE.md",
+        "CLAUDE.md"
+      ]
+    },
+    "claudeai-base": {
+      "system_prompt": [
+        "bench/claudeai/system.md"
+      ],
+      "settings": {
+        "language": null
+      }
+    },
+    "claudeai-prefs": {
+      "system_prompt": [
+        "bench/claudeai/system.md",
+        "bench/claudeai/preferences-intro.md",
+        "claude-ai-preferences.md"
+      ],
+      "settings": {
+        "language": null
+      }
     }
   }
 }
