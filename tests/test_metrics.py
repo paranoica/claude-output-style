@@ -186,6 +186,12 @@ class TestLowercaseStarts:
     def test_lowercase_after_real_sentence_end_still_counted(self) -> None:
         assert count_lowercase_starts("Ок. и т.п. тоже.") == 1
 
+    def test_latin_identifier_start_ignored(self) -> None:
+        assert count_lowercase_starts("**arq** подходит. xid выдаётся лениво. rq проще.") == 0
+
+    def test_abbreviation_inside_parentheses(self) -> None:
+        assert count_lowercase_starts("Счётчик растёт (см. ниже). Дальше так.") == 0
+
     def test_list_items_ignored(self) -> None:
         assert count_lowercase_starts("Шаги:\n- сначала это\n1. потом то") == 0
 

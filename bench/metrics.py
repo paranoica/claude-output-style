@@ -209,7 +209,8 @@ def _sentences(line: str) -> list[str]:
     parts, start = [], 0
     for m in re.finditer(r"[.!?…]\s+", line):
         before = line[start : m.start() + 1].split()
-        if m.group()[0] == "." and before and before[-1].lower() in _ABBREVIATIONS:
+        word = before[-1].lstrip("(«\"'").lower() if before else ""
+        if m.group()[0] == "." and word in _ABBREVIATIONS:
             continue
         parts.append(line[start : m.start() + 1])
         start = m.end()
@@ -218,7 +219,11 @@ def _sentences(line: str) -> list[str]:
 
 
 def count_lowercase_starts(text: str) -> int:
-    """Count prose sentences that start with a lowercase letter, skipping lists and headers."""
+    """Count prose sentences starting with a lowercase Cyrillic letter.
+
+    Lists, headers and tables are skipped. Latin starts are skipped too: they are almost
+    always identifiers like ``arq`` or ``xid``, not a mimicked lowercase register.
+    """
     total = 0
     for line in strip_code(text).splitlines():
         if not line.strip() or _BULLET.match(line) or _HEADER.match(line):
@@ -227,7 +232,7 @@ def count_lowercase_starts(text: str) -> int:
             continue
         for sentence in _sentences(line.strip()):
             sentence = sentence.lstrip('*_"«(>')
-            if sentence and sentence[0].isalpha() and sentence[0].islower():
+            if re.match(r"[а-яё]", sentence):
                 total += 1
     return total
 
