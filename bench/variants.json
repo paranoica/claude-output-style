@@ -42,6 +42,9 @@
       "settings": {
         "language": null
       }
+    },
+    "terse": {
+      "claude_md": "bench/candidates/claudemd-terse.md"
     }
   }
 }
