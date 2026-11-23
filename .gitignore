@@ -5,3 +5,4 @@ __pycache__/
 bench/results/*/raw/
 *.log
 .review/
+.playwright-mcp/
