@@ -1,0 +1,21 @@
+{
+ "claude_version": "2.1.330 (Claude Code)",
+ "started": "2026-11-23T16:21:07",
+ "runs": 3,
+ "variants": {
+  "claudemd": {
+   "language": "Russian",
+   "effortLevel": "high"
+  },
+  "style": {
+   "language": "Russian",
+   "effortLevel": "high",
+   "outputStyle": "plain"
+  },
+  "both": {
+   "language": "Russian",
+   "effortLevel": "high",
+   "outputStyle": "plain"
+  }
+ }
+}
