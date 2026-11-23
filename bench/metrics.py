@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-_FENCE = re.compile(r"^[ \t]*(```|~~~).*?(?:^[ \t]*\1[ \t]*$|\Z)", re.S | re.M)
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,}).*?(?:^[ \t]*\1[`~]*[ \t]*$|\Z)", re.S | re.M)
 _INLINE = re.compile(r"`[^`\n]+`")
 _BULLET = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 _HEADER = re.compile(r"^\s{0,3}#{1,6}\s")
@@ -51,6 +51,8 @@ _OPENERS = [
     r"давай(те)? (разбер|посмотр|начн|пройд)",
     r"(let me|let's|let us) ",
     r"(понял|понятно|ясно|окей|ok|okay)[,!.]",
+    r"(понимаю|знакомо|сочувствую)\b",
+    r"(звучит|это) (очень |реально )?(тяжело|неприятно|выматывающе)",
     r"(привет|здравствуй|hi|hey|hello)\b",
     r"(ты|вы) (спрашиваешь|спрашиваете|хочешь узнать|хотите узнать)",
     r"(you're|you are) asking",

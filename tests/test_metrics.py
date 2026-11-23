@@ -24,6 +24,9 @@ class TestStripCode:
     def test_replaces_inline_code_with_placeholder(self) -> None:
         assert strip_code("Запусти `ls -la` сейчас") == "Запусти CODE сейчас"
 
+    def test_four_backtick_fence_closes(self) -> None:
+        assert strip_code("до\n````md\n```\nin\n```\n````\nпосле").split() == ["до", "после"]
+
     def test_unclosed_fence_drops_rest(self) -> None:
         assert strip_code("Текст\n```\ncode — here").strip() == "Текст"
 
@@ -78,6 +81,15 @@ class TestOpener:
 
     def test_bold_wrapped_opener(self) -> None:
         assert has_opener("**Конечно!** Вот команда.")
+
+    def test_empathy_openers(self) -> None:
+        assert has_opener("Понимаю. Три недели выматывают.")
+        assert has_opener("Понимаю, это тяжело.")
+        assert has_opener("Знакомо. Клиент меняет требования.")
+        assert has_opener("Сочувствую, звучит тяжело.")
+
+    def test_understanding_as_part_of_answer_is_not_opener(self) -> None:
+        assert not has_opener("Понимание MVCC начинается со снапшотов.")
 
     def test_direct_answer_is_not_opener(self) -> None:
         assert not has_opener("По умолчанию 5432.")
