@@ -1,0 +1,17 @@
+{
+ "claude_version": "2.1.330 (Claude Code)",
+ "started": "2026-11-23T16:37:11",
+ "runs": 3,
+ "variants": {
+  "installed": {
+   "language": "Russian",
+   "effortLevel": "high"
+  },
+  "claudeai-base": {
+   "effortLevel": "high"
+  },
+  "claudeai-prefs": {
+   "effortLevel": "high"
+  }
+ }
+}
