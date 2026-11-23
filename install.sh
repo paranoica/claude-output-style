@@ -74,6 +74,14 @@ has_block() {
   exit 1
 }
 
+# Markers are matched as whole LF lines; refuse CRLF files instead of appending a second block.
+check_line_endings() {
+  if grep -q $'\r' "$1"; then
+    echo "error: $1 has CRLF line endings; convert it to LF (e.g. dos2unix) and rerun" >&2
+    exit 1
+  fi
+}
+
 # Writes $2 over $1 only when the content differs. Uses cat so the file keeps its mode.
 replace_if_changed() {
   local file=$1 new=$2
@@ -89,6 +97,9 @@ replace_if_changed() {
 install_block() {
   local new="$workdir/new" verb
   mkdir -p "$target_dir"
+  if [[ -f $target ]]; then
+    check_line_endings "$target"
+  fi
   if [[ ! -f $target ]]; then
     cp "$workdir/block" "$new"
     verb="added to"
@@ -119,6 +130,9 @@ install_block() {
 
 uninstall_block() {
   local new="$workdir/new"
+  if [[ -f $target ]]; then
+    check_line_endings "$target"
+  fi
   if [[ ! -f $target ]] || ! has_block "$target"; then
     echo "rules: not installed in $target"
     return 0

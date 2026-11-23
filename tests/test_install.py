@@ -109,6 +109,14 @@ class TestInstall:
         assert claude_md(home).read_text() == content
         assert backups(home) == []
 
+    def test_crlf_file_aborts_without_changes(self, home: Path) -> None:
+        content = f"# Mine\r\n\r\n{BEGIN}\r\nold\r\n{END}\r\n"
+        claude_md(home).write_bytes(content.encode())
+        result = run(home)
+        assert result.returncode == 1
+        assert "CRLF" in result.stderr
+        assert claude_md(home).read_bytes() == content.encode()
+
     def test_marker_text_inside_a_line_is_not_a_marker(self, home: Path) -> None:
         original = f"see `{BEGIN}` in docs\n"
         claude_md(home).write_text(original)
