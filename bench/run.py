@@ -42,9 +42,9 @@ class Variant:
     """One configuration under test."""
 
     name: str
-    claude_md: Path | None
+    claude_md: tuple[Path, ...] | None
     style: Path | None
-    system_prompt: Path | None
+    system_prompt: tuple[Path, ...] | None
     settings: dict[str, Any] = field(default_factory=dict)
 
 
@@ -56,6 +56,13 @@ def _resolve(raw: str | None, repo: Path) -> Path | None:
     if not path.is_file():
         raise FileNotFoundError(f"variant file not found: {path}")
     return path
+
+
+def _resolve_many(raw: str | list[str] | None, repo: Path) -> tuple[Path, ...] | None:
+    if raw is None:
+        return None
+    items = [raw] if isinstance(raw, str) else raw
+    return tuple(p for p in (_resolve(item, repo) for item in items) if p is not None)
 
 
 def load_variants(config: Path, names: list[str], repo: Path = REPO) -> list[Variant]:
@@ -81,13 +88,14 @@ def load_variants(config: Path, names: list[str], repo: Path = REPO) -> list[Var
         if name not in defined:
             raise ValueError(f"unknown variant: {name} (have: {', '.join(defined)})")
         spec = defined[name]
+        merged = {**base, **spec.get("settings", {})}
         variants.append(
             Variant(
                 name=name,
-                claude_md=_resolve(spec.get("claude_md"), repo),
+                claude_md=_resolve_many(spec.get("claude_md"), repo),
                 style=_resolve(spec.get("style"), repo),
-                system_prompt=_resolve(spec.get("system_prompt"), repo),
-                settings={**base, **spec.get("settings", {})},
+                system_prompt=_resolve_many(spec.get("system_prompt"), repo),
+                settings={k: v for k, v in merged.items() if v is not None},
             )
         )
     return variants
@@ -114,7 +122,9 @@ def build_settings(variant: Variant) -> dict[str, Any]:
     return settings
 
 
-def build_command(prompt: str, variant: Variant, resume: str | None) -> list[str]:
+def build_command(
+    prompt: str, variant: Variant, resume: str | None, system_prompt_file: Path | None = None
+) -> list[str]:
     """Build the `claude -p` argv.
 
     The prompt goes right after ``-p`` because ``--tools`` and ``--mcp-config`` are variadic
@@ -134,8 +144,8 @@ def build_command(prompt: str, variant: Variant, resume: str | None) -> list[str
         "--settings",
         json.dumps(build_settings(variant), ensure_ascii=False),
     ]
-    if variant.system_prompt:
-        cmd += ["--system-prompt-file", str(variant.system_prompt)]
+    if system_prompt_file:
+        cmd += ["--system-prompt-file", str(system_prompt_file)]
     if resume:
         cmd += ["--resume", resume]
     return cmd
@@ -154,7 +164,11 @@ def make_home(job_dir: Path, variant: Variant, credentials: Path) -> tuple[Path,
     cwd.mkdir(parents=True)
     (claude_dir / ".credentials.json").symlink_to(credentials)
     if variant.claude_md:
-        shutil.copyfile(variant.claude_md, claude_dir / "CLAUDE.md")
+        parts = [p.read_text(encoding="utf-8").strip() for p in variant.claude_md]
+        (claude_dir / "CLAUDE.md").write_text("\n\n".join(parts), encoding="utf-8")
+    if variant.system_prompt:
+        parts = [p.read_text(encoding="utf-8").strip() for p in variant.system_prompt]
+        (home / "system-prompt.md").write_text("\n\n".join(parts), encoding="utf-8")
     if variant.style:
         (claude_dir / "output-styles").mkdir()
         shutil.copyfile(variant.style, claude_dir / "output-styles" / variant.style.name)
@@ -234,10 +248,11 @@ def _attempt(job: Job, credentials: Path) -> tuple[list[dict[str, Any]], str | N
     try:
         home, cwd = make_home(job_dir, job.variant, credentials)
         env = clean_env(home)
+        system_prompt = home / "system-prompt.md" if job.variant.system_prompt else None
         resume = None
         for prompt in job.turns:
             proc = subprocess.run(
-                build_command(prompt, job.variant, resume),
+                build_command(prompt, job.variant, resume, system_prompt),
                 cwd=cwd,
                 env=env,
                 stdin=subprocess.DEVNULL,

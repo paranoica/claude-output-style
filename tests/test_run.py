@@ -40,17 +40,21 @@ def repo(tmp_path: Path) -> Path:
                         "settings": {"effortLevel": "low", "language": "English"},
                     },
                     "missing": {"claude_md": "nope.md"},
+                    "multi": {"claude_md": ["CLAUDE.md", "extra.md"]},
+                    "nolang": {"settings": {"language": None}},
+                    "sp": {"system_prompt": ["CLAUDE.md", "extra.md"]},
                 },
             }
         ),
     )
+    _write(root / "extra.md", "more rules")
     return root
 
 
 class TestLoadVariants:
     def test_resolves_relative_paths_against_repo(self, repo: Path) -> None:
         [md] = load_variants(repo / "variants.json", ["md"], repo)
-        assert md.claude_md == repo / "CLAUDE.md"
+        assert md.claude_md == (repo / "CLAUDE.md",)
         assert md.style is None
 
     def test_keeps_requested_order(self, repo: Path) -> None:
@@ -71,6 +75,36 @@ class TestLoadVariants:
 
     def test_missing_file_in_unrequested_variant_is_ignored(self, repo: Path) -> None:
         assert len(load_variants(repo / "variants.json", ["baseline"], repo)) == 1
+
+
+class TestVariantExtras:
+    def test_claude_md_list_resolves_every_file(self, repo: Path) -> None:
+        [v] = load_variants(repo / "variants.json", ["multi"], repo)
+        assert v.claude_md == (repo / "CLAUDE.md", repo / "extra.md")
+
+    def test_null_setting_removes_base_key(self, repo: Path) -> None:
+        [v] = load_variants(repo / "variants.json", ["nolang"], repo)
+        assert "language" not in v.settings
+
+    def test_make_home_concatenates_claude_md_files(self, repo: Path, tmp_path: Path) -> None:
+        creds = _write(tmp_path / "real/.credentials.json", "{}")
+        [v] = load_variants(repo / "variants.json", ["multi"], repo)
+        home, _ = make_home(tmp_path / "job", v, creds)
+        assert (home / ".claude/CLAUDE.md").read_text() == "rules\n\nmore rules"
+
+
+class TestSystemPrompt:
+    def test_make_home_writes_concatenated_system_prompt(self, repo: Path, tmp_path: Path) -> None:
+        creds = _write(tmp_path / "real/.credentials.json", "{}")
+        [v] = load_variants(repo / "variants.json", ["sp"], repo)
+        home, _ = make_home(tmp_path / "job", v, creds)
+        assert (home / "system-prompt.md").read_text() == "rules\n\nmore rules"
+
+    def test_no_system_prompt_file_without_setting(self, repo: Path, tmp_path: Path) -> None:
+        creds = _write(tmp_path / "real/.credentials.json", "{}")
+        [v] = load_variants(repo / "variants.json", ["baseline"], repo)
+        home, _ = make_home(tmp_path / "job", v, creds)
+        assert not (home / "system-prompt.md").exists()
 
 
 class TestStyleName:
@@ -128,15 +162,18 @@ class TestBuildCommand:
 
     def test_system_prompt_file(self, tmp_path: Path) -> None:
         sp = tmp_path / "prefs.md"
-        cmd = build_command("q", self._variant(system_prompt=sp), None)
+        cmd = build_command("q", self._variant(), None, sp)
         assert cmd[cmd.index("--system-prompt-file") + 1] == str(sp)
+
+    def test_no_system_prompt_flag_by_default(self) -> None:
+        assert "--system-prompt-file" not in build_command("q", self._variant(), None)
 
 
 class TestMakeHome:
     def test_layout(self, repo: Path, tmp_path: Path) -> None:
         creds = _write(tmp_path / "real/.credentials.json", "{}")
         [v] = load_variants(repo / "variants.json", ["st"], repo)
-        v = Variant(**{**v.__dict__, "claude_md": repo / "CLAUDE.md"})
+        v = Variant(**{**v.__dict__, "claude_md": (repo / "CLAUDE.md",)})
         home, cwd = make_home(tmp_path / "job", v, creds)
         link = home / ".claude/.credentials.json"
         assert link.is_symlink() and link.resolve() == creds.resolve()
