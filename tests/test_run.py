@@ -1,9 +1,12 @@
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+import bench.run as run_module
 from bench.run import (
+    Job,
     Variant,
     build_command,
     build_settings,
@@ -221,6 +224,18 @@ class TestSyncCredentials:
         assert sync_credentials(tmp_path / "home", real) is None
         assert real.stat().st_mtime_ns == mtime
 
+    def test_symlinked_real_credentials_updated_through_link(self, tmp_path: Path) -> None:
+        target = _write(tmp_path / "dotfiles/creds.json", "old")
+        real = tmp_path / "real/.credentials.json"
+        real.parent.mkdir()
+        real.symlink_to(target)
+        link = tmp_path / "home/.claude/.credentials.json"
+        link.parent.mkdir(parents=True)
+        link.write_text("new")
+        assert sync_credentials(tmp_path / "home", real) is not None
+        assert real.is_symlink()
+        assert target.read_text() == "new"
+
     def test_deleted_link_does_nothing(self, tmp_path: Path) -> None:
         real, link = self._setup(tmp_path)
         link.unlink()
@@ -267,3 +282,25 @@ class TestParseTurn:
     def test_garbage_raises(self) -> None:
         with pytest.raises(ValueError):
             parse_turn("q", "not json")
+
+
+class TestAttemptTimeout:
+    def test_refreshed_token_synced_even_when_turn_times_out(
+        self, repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        real = _write(tmp_path / "real/.credentials.json", "old")
+        monkeypatch.setattr(run_module, "WORK_ROOT", tmp_path / "jobs")
+
+        def fake_run(cmd: list[str], **kwargs: object) -> None:
+            link = Path(str(kwargs["env"]["HOME"])) / ".claude/.credentials.json"  # type: ignore[index]
+            link.unlink()
+            link.write_text("refreshed")
+            raise subprocess.TimeoutExpired(cmd, 1)
+
+        monkeypatch.setattr(run_module.subprocess, "run", fake_run)
+        [v] = load_variants(repo / "variants.json", ["baseline"], repo)
+        job = Job(v, "p", ["q"], 1, tmp_path / "out.json")
+        _, error, _ = run_module._attempt(job, real)
+        assert error is not None and "TimeoutExpired" in error
+        assert real.read_text() == "refreshed"
+        assert not any((tmp_path / "jobs").iterdir())

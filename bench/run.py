@@ -193,10 +193,11 @@ def sync_credentials(home: Path, credentials: Path) -> str | None:
         fresh = link.read_bytes()
         if credentials.exists() and credentials.read_bytes() == fresh:
             return None
-        tmp = credentials.with_name(f".credentials.{uuid.uuid4().hex}.tmp")
+        dest = credentials.resolve()
+        tmp = dest.with_name(f".credentials.{uuid.uuid4().hex}.tmp")
         tmp.write_bytes(fresh)
         tmp.chmod(0o600)
-        os.replace(tmp, credentials)
+        os.replace(tmp, dest)
     return f"credentials were refreshed inside {home}; copied back to {credentials}"
 
 
@@ -261,8 +262,6 @@ def _attempt(job: Job, credentials: Path) -> tuple[list[dict[str, Any]], str | N
                 timeout=TURN_TIMEOUT_S,
                 check=False,
             )
-            if warning := sync_credentials(home, credentials):
-                warnings.append(warning)
             if proc.returncode != 0:
                 return turns, f"exit {proc.returncode}: {proc.stderr[-500:]}", warnings
             turn = parse_turn(prompt, proc.stdout)
@@ -274,6 +273,9 @@ def _attempt(job: Job, credentials: Path) -> tuple[list[dict[str, Any]], str | N
     except (subprocess.TimeoutExpired, ValueError, OSError) as exc:
         return turns, f"{type(exc).__name__}: {exc}", warnings
     finally:
+        # Also on timeout: a token refreshed inside the job must not vanish with job_dir.
+        if warning := sync_credentials(job_dir / "home", credentials):
+            warnings.append(warning)
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
