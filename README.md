@@ -1,84 +1,68 @@
 # claude-output-style
 
-Глобальные правила формата ответов Claude: ответ в первой строке, коротко по умолчанию, без вступлений, резюме и хвостов «если хочешь, могу ещё», без длинного тире и без подражания манере пользователя. Правила занимают 14 строк и два примера: они грузятся в каждый запрос, и длинный стайлгайд стоил бы токенов сам по себе.
+A short rule set that makes Claude's answers direct and compact: the answer comes first, with no intros, no recaps and no "let me know if you want more". The voice stays neutral and never imitates the user's slang. The rules are in Russian, but they apply to English answers too.
 
-| Файл | Что это |
-|---|---|
-| `CLAUDE.md` | блок для `~/.claude/CLAUDE.md` между маркерами `claude-output-style:begin/end` |
-| `output-styles/plain.md` | тот же текст в виде output style Claude Code (опционально) |
-| `claude-ai-preferences.md` | ужатая версия для поля personal preferences на claude.ai |
-| `examples.md` | пары «было → стало» из прогона стенда |
-| `install.sh` | установка и удаление |
-| `bench/` | стенд: прогон промптов через `claude -p` и метрики |
+Works in Claude Code (via `~/.claude/CLAUDE.md`) and on claude.ai (via the Instructions field).
 
-## Установка
+## Before and after
+
+> what should I use for background jobs: celery, rq or arq? ~1000 jobs a day
+
+**Before:** a `## Why arq` heading, a bullet list with every item bolded, em dashes, and a closing "Show me what the jobs do and I can be more specific."
+
+**After:** "arq if the jobs are async, rq if they are sync. Celery is overkill for 1000 jobs a day: …"
+
+More pairs are in [examples.md](examples.md).
+
+## Install
+
+Claude Code:
 
 ```bash
+git clone https://github.com/paranoica/claude-output-style.git
+cd claude-output-style
 ./install.sh
 ```
 
-Что делает скрипт:
+The script appends the rules to `~/.claude/CLAUDE.md` between marker comments, so your existing text is untouched and re-running it only updates the block. It backs up every file it changes to `<file>.bak-<timestamp>`. Restart running sessions to pick up the rules.
 
-- Дописывает блок в конец `~/.claude/CLAUDE.md` (или `$CLAUDE_CONFIG_DIR/CLAUDE.md`). Если блок уже есть, обновляет его на месте, остальной текст не трогает. Повторный запуск ничего не меняет.
-- Снимает `outputStyle` в `settings.json` и `settings.local.json`, если там стоит чужой стиль. Стиль, который велит подстраиваться под манеру пользователя, перебивает эти правила. `plain` и `default` не трогает. Отключается флагом `--keep-style`.
-- Перед каждым изменением кладёт рядом копию `<файл>.bak-<время>`.
-- С битыми маркерами (один без пары, два блока) останавливается и ничего не пишет.
+If an output style is active, the script unsets it, because a style overrides these rules. Pass `--keep-style` to leave it alone.
 
-Флаги: `--with-style` дополнительно ставит `output-styles/plain.md`, `--uninstall` убирает блок и неизменённый `plain.md` (настройки не трогает, `outputStyle` при желании вернуть из бэкапа).
+To remove the rules: `./install.sh --uninstall`.
 
-Новые сессии Claude Code подхватывают правила сами, уже открытые нужно перезапустить.
+claude.ai: paste [claude-ai-preferences.md](claude-ai-preferences.md) into Settings → Your Claude → Instructions.
 
-### claude.ai
+## Does it work?
 
-Скопировать текст `claude-ai-preferences.md` в Settings → Your Claude → Instructions. Это 1034 символа. Официального лимита поля Anthropic не публикует. Styles на claude.ai сейчас переезжают в skills, поэтому основной путь это preferences.
+Tested on 10 prompts of different kinds (a quick fact, code how-to, debugging from a traceback, a personal question, and so on), 6 runs each, through `claude -p`. The table compares the rules with plain Claude Code.
 
-### bedrock
+| | Plain Claude Code | With the rules |
+|---|---|---|
+| Average answer length | 2586 chars | 1372 chars (−47%) |
+| Output tokens | 1533 | 920 (−40%) |
+| Em dashes | 43 in 30 answers | 1 in 60 |
+| "Want me to…" endings | 8 in 30 | 0 |
+| Copying the user's slang | n/a | 0 |
 
-Копия или сабмодуль здесь не нужны: в README bedrock достаточно ссылки на этот репозиторий и команды `./install.sh`. Так правила живут в одном месте и не разъезжаются.
+On a manual "is this cringe?" check of 30 answers, all 30 passed.
 
-## Результаты
+## Files
 
-Стенд прогоняет 10 промптов разного типа по 3 раза на каждый вариант. Каждый прогон идёт через `claude -p` в отдельном временном HOME, чтобы личный CLAUDE.md, плагины, хуки и MCP не влияли на ответ. Среднее по ответам без промпта с явной просьбой о подробном разборе (он один перевешивает остальные):
+| File | What it is |
+|---|---|
+| `CLAUDE.md` | the rules block for Claude Code |
+| `claude-ai-preferences.md` | a shorter version for claude.ai |
+| `output-styles/plain.md` | the same rules as a Claude Code output style (`./install.sh --with-style`) |
+| `install.sh` | install, update, uninstall |
+| `bench/` | the test harness (below) |
 
-| Вариант | Ответов | Символов | Выходных токенов | Вступлений | Длинных тире | Хвостов | Резюме | Мимикрии |
-|---|---|---|---|---|---|---|---|---|
-| чистый Claude Code | 30 | 2586 | 1533 | 3 | 43 | 8 | 1 | 0 |
-| прежний стиль `humanized` | 30 | 1756 | 1144 | 3 | 1 | 4 | 0 | 2 |
-| **`CLAUDE.md`, итоговая версия** | 60 | **1372** | **920** | 0 | 1 | 0 | 1 | 0 |
-| `CLAUDE.md` без строки про короткие предложения | 60 | 1530 | 1036 | 0 | 0 | 0 | 0 | 0 |
-| output style (та же первая версия) | 30 | 1672 | 1030 | 0 | 0 | 0 | 0 | 0 |
-| `CLAUDE.md` + output style | 30 | 1544 | 999 | 0 | 0 | 0 | 0 | 0 |
-| реальный CLAUDE.md + блок (первая версия) | 30 | 1706 | 1054 | 0 | 0 | 0 | 0 | 0 |
-| claude.ai без preferences* | 30 | 2556 | 1569 | 2 | 115 | 5 | 3 | 0 |
-| claude.ai с preferences* | 30 | 1617 | 1094 | 0 | 0 | 0 | 0 | 0 |
-
-Символы и токены считаны без промпта с явной просьбой о подробном разборе, остальные колонки по всем ответам варианта. Вступления здесь это зачины вроде «Понимаю.» и «Знакомо.» перед ответом на личный вопрос.
-
-\* Приближение: `claude -p --system-prompt-file` с коротким системным промптом вместо промпта Claude Code. Настоящий системный промпт claude.ai так не воспроизвести.
-
-У итоговой версии на 60 ответов одно длинное тире и одно «Итог:» в конце подробного разбора, у версии без строки про короткие предложения ноль. На такой выборке разница не отличается от шума, а экономия в 11% токенов стабильна на обеих половинах прогона, поэтому строка осталась.
-
-Ещё один контрольный прогон шёл в реальном окружении: плагины bedrock, личный CLAUDE.md и блок через `--append-system-prompt-file`, по одному ответу на промпт. Конфликтов нет, все флаги нулевые (`bench/results/real`).
-
-Подробности по каждому ответу лежат в `bench/results/*/report.md`, сами ответы для чтения глазами в `review.md`.
-
-## Решения
-
-- **CLAUDE.md, а не output style.** На тестах стиль не лучше блока в CLAUDE.md, а «оба сразу» грузит правила дважды. Инструкции Claude Code для работы с кодом стиль не теряет: в Claude Code 2.1.330 системный промпт со стилем отличается от обычного только вступительной строкой и самим текстом стиля, а с `keep-coding-instructions: true` и без него совпадает дословно. Флаг в `plain.md` всё равно стоит, на случай других версий.
-- **ё не регулируем.** Отдельная строка в правилах стоит токенов в каждом запросе, а пользы от неё мало.
-- **Английский по тем же правилам** плюс одна строка про английский слоп. В Claude Code с `language: Russian` модель всё равно отвечает по-русски и на английский вопрос.
-- **Из caveman взята одна строка:** короткие предложения по одной мысли, числа, команды и ошибки дословно, предупреждения полными предложениями. Она дала ещё −11% выходных токенов без потери читаемости. Телеграфный стиль без служебных слов не взят: в бенчмарке самого caveman обычное «Answer concisely.» уже даёт около 38% экономии, `/caveman` добавляет к этому около 3%, а заметный выигрыш дают только телеграфные режимы, которые хуже читаются.
-- **В preferences для claude.ai этой строки нет:** там проверена версия без неё. Добавить можно, но цифры в таблице относятся к тексту без неё.
-
-## Стенд
+## Test harness
 
 ```bash
 python3 -m bench.run --variants baseline,claudemd --runs 3 --label my-run
 python3 -m bench.metrics bench/results/my-run
 ```
 
-Варианты описаны в `bench/variants.json`, промпты в `bench/prompts.json`. `metrics` пишет в папку прогона `report.md` (таблица и список ответов с флагами), `review.md` (ответы рядом для чтения) и `metrics.json`. Сырые ответы в git не попадают.
+Each run uses a throwaway HOME, so your own config, plugins and MCP servers don't leak into the answers. Prompts live in `bench/prompts.json` and variants in `bench/variants.json`. `metrics` writes `report.md` with counts per variant and `review.md` with the answers side by side. `python3 -m bench.review_page` builds a local HTML page for rating answers by hand.
 
-Файл с OAuth-токеном подключается в временный HOME симлинком, а не копией. Если `claude` всё же обновит токен и заменит симлинк файлом, скрипт вернёт свежий токен на место и напишет об этом.
-
-Тесты: `uv run --no-project --with pytest pytest`.
+Tests: `uv run --no-project --with pytest pytest`.
